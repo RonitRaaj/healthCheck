@@ -14,7 +14,7 @@ public class HistoryCleanupScheduler {
         this.historyCleanupService = historyCleanupService;
     }
 
-    @Scheduled(fixedRate = 3600000)
+    @Scheduled(fixedRate = 360000)
     public void cleanupOldHistory() {
 
         System.out.println("Running history cleanup...");

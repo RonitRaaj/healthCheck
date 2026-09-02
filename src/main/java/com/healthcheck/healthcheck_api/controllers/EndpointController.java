@@ -9,6 +9,7 @@ import com.healthcheck.healthcheck_api.dto.*;
 import com.healthcheck.healthcheck_api.services.EndpointStatusHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.constraints.Positive;
@@ -81,5 +82,14 @@ public class EndpointController {
             @PathVariable Long id) {
 
         return endpointStatusHistoryService.getHistory(id);
+    }
+
+    @GetMapping("/{endpointId}/stats")
+    public ResponseEntity<EndpointStatsResponse> getEndpointStats(
+            @PathVariable Long endpointId) {
+
+        return ResponseEntity.ok(
+                endpointStatusHistoryService.getEndpointStats(endpointId)
+        );
     }
 }

@@ -17,7 +17,11 @@ public class HealthCheckScheduler {
     private final HealthCheckService healthCheckService;
     private final ExecutorService healthCheckExecutor;
 
-    public HealthCheckScheduler(EndpointRepository endpointRepository , HealthCheckService healthCheckService ,  ExecutorService healthCheckExecutor) {
+    public HealthCheckScheduler(
+            EndpointRepository endpointRepository,
+            HealthCheckService healthCheckService,
+            ExecutorService healthCheckExecutor) {
+
         this.endpointRepository = endpointRepository;
         this.healthCheckService = healthCheckService;
         this.healthCheckExecutor = healthCheckExecutor;
@@ -38,6 +42,15 @@ public class HealthCheckScheduler {
         );
 
         for (Endpoint endpoint : dueEndpoints) {
+
+            endpoint.setNextCheckAt(
+                    now.plusMinutes(
+                            endpoint.getCheckIntervalMinutes()
+                    )
+            );
+
+            endpointRepository.save(endpoint);
+
             healthCheckExecutor.submit(() -> {
 
                 System.out.println(

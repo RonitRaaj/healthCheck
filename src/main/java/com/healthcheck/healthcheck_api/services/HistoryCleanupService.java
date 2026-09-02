@@ -1,6 +1,7 @@
 package com.healthcheck.healthcheck_api.services;
 
 import com.healthcheck.healthcheck_api.repositories.EndpointStatusHistoryRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,15 +16,18 @@ public class HistoryCleanupService {
         this.historyRepository = historyRepository;
     }
 
+    @Transactional
     public void deleteOldHistory() {
 
         LocalDateTime cutoff =
                 LocalDateTime.now().minusHours(72);
 
-        historyRepository.deleteByCheckedAtBefore(cutoff);
+        long deleted =
+                historyRepository.deleteByCheckedAtBefore(cutoff);
 
         System.out.println(
-                "Deleted history records older than: " + cutoff
+                "Deleted " + deleted +
+                        " history records older than: " + cutoff
         );
     }
 }
