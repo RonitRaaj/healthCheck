@@ -6,9 +6,11 @@ import com.healthcheck.healthcheck_api.exceptions.EndpointNotFoundException;
 import com.healthcheck.healthcheck_api.models.Endpoint;
 import com.healthcheck.healthcheck_api.models.User;
 import com.healthcheck.healthcheck_api.repositories.EndpointRepository;
+import com.healthcheck.healthcheck_api.repositories.EndpointStatusHistoryRepository;
 import com.healthcheck.healthcheck_api.repositories.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,15 +20,18 @@ public class EndpointService {
 
     private final EndpointRepository endpointRepository;
     private final UserRepository userRepository;
+    private final EndpointStatusHistoryRepository historyRepository;
     private final HealthCheckService healthCheckService;
 
     public EndpointService(
             EndpointRepository endpointRepository,
             UserRepository userRepository,
+            EndpointStatusHistoryRepository historyRepository,
             HealthCheckService healthCheckService) {
 
         this.endpointRepository = endpointRepository;
         this.userRepository = userRepository;
+        this.historyRepository = historyRepository;
         this.healthCheckService = healthCheckService;
     }
 
@@ -52,7 +57,6 @@ public class EndpointService {
         );
 
         endpoint.setStatus("UNKNOWN");
-
         endpoint.setUser(user);
 
         LocalDateTime now = LocalDateTime.now();
@@ -118,12 +122,18 @@ public class EndpointService {
         return endpointRepository.save(existingEndpoint);
     }
 
+    @Transactional
     public void deleteEndpoint(
             Long id,
             Authentication authentication) {
 
         Endpoint endpoint =
                 getEndpointById(id, authentication);
+
+        historyRepository.deleteAll(
+                historyRepository
+                        .findByEndpointIdOrderByCheckedAtDesc(id)
+        );
 
         endpointRepository.delete(endpoint);
     }
@@ -167,7 +177,9 @@ public class EndpointService {
 
         return userRepository.findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException("Authenticated user not found")
+                        new RuntimeException(
+                                "Authenticated user not found"
+                        )
                 );
     }
 }
