@@ -141,4 +141,9 @@ public class EndpointController {
                 authentication
         );
     }
+
+    @GetMapping("/healthcheck")
+    public String healthCheck() {
+        return "Ok";
+    }
 }
