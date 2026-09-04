@@ -86,12 +86,6 @@ public class AuthController {
                 .getContext()
                 .setAuthentication(authentication);
 
-        securityContextRepository.saveContext(
-                SecurityContextHolder.getContext(),
-                httpRequest,
-                httpResponse
-        );
-
         return ResponseEntity.ok(
                 new LoginResponse(
                         "Login successful",

@@ -34,6 +34,7 @@ public class SecurityConfig {
 
                 .securityContext(securityContext -> securityContext
                         .securityContextRepository(securityContextRepository)
+                        .requireExplicitSave(false)
                 )
 
                 .sessionManagement(session -> session
