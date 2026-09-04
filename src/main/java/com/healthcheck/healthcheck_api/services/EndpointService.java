@@ -4,7 +4,10 @@ import com.healthcheck.healthcheck_api.dto.CreateEndpointRequest;
 import com.healthcheck.healthcheck_api.dto.UpdateEndpointRequest;
 import com.healthcheck.healthcheck_api.exceptions.EndpointNotFoundException;
 import com.healthcheck.healthcheck_api.models.Endpoint;
+import com.healthcheck.healthcheck_api.models.User;
 import com.healthcheck.healthcheck_api.repositories.EndpointRepository;
+import com.healthcheck.healthcheck_api.repositories.UserRepository;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,19 +17,30 @@ import java.util.List;
 public class EndpointService {
 
     private final EndpointRepository endpointRepository;
+    private final UserRepository userRepository;
     private final HealthCheckService healthCheckService;
 
-    public EndpointService(EndpointRepository endpointRepository ,  HealthCheckService healthCheckService) {
+    public EndpointService(
+            EndpointRepository endpointRepository,
+            UserRepository userRepository,
+            HealthCheckService healthCheckService) {
+
         this.endpointRepository = endpointRepository;
+        this.userRepository = userRepository;
         this.healthCheckService = healthCheckService;
     }
 
-    public Endpoint createEndpoint(CreateEndpointRequest request) {
+    public Endpoint createEndpoint(
+            CreateEndpointRequest request,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
 
         Endpoint endpoint = new Endpoint();
 
         endpoint.setName(request.getName());
         endpoint.setUrl(request.getUrl());
+
         endpoint.setCheckIntervalMinutes(
                 request.getCheckIntervalMinutes()
         );
@@ -39,10 +53,14 @@ public class EndpointService {
 
         endpoint.setStatus("UNKNOWN");
 
+        endpoint.setUser(user);
+
         LocalDateTime now = LocalDateTime.now();
 
         endpoint.setNextCheckAt(
-                now.plusMinutes(endpoint.getCheckIntervalMinutes())
+                now.plusMinutes(
+                        endpoint.getCheckIntervalMinutes()
+                )
         );
 
         endpoint = endpointRepository.save(endpoint);
@@ -52,20 +70,32 @@ public class EndpointService {
         return endpoint;
     }
 
-    public List<Endpoint> getAllEndpoints() {
-        return endpointRepository.findAll();
+    public List<Endpoint> getAllEndpoints(
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return endpointRepository.findByUserId(user.getId());
     }
 
-    public Endpoint getEndpointById(Long id) {
-        return endpointRepository.findById(id)
+    public Endpoint getEndpointById(
+            Long id,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return endpointRepository
+                .findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new EndpointNotFoundException(id));
     }
 
     public Endpoint updateEndpoint(
             Long id,
-            UpdateEndpointRequest request) {
+            UpdateEndpointRequest request,
+            Authentication authentication) {
 
-        Endpoint existingEndpoint = getEndpointById(id);
+        Endpoint existingEndpoint =
+                getEndpointById(id, authentication);
 
         if (request.getName() != null) {
             existingEndpoint.setName(request.getName());
@@ -88,18 +118,56 @@ public class EndpointService {
         return endpointRepository.save(existingEndpoint);
     }
 
-    public void deleteEndpoint(Long id) {
+    public void deleteEndpoint(
+            Long id,
+            Authentication authentication) {
 
-        Endpoint endpoint = getEndpointById(id);
+        Endpoint endpoint =
+                getEndpointById(id, authentication);
 
         endpointRepository.delete(endpoint);
     }
 
-    public List<Endpoint> searchByName(String name) {
-        return endpointRepository.findByNameContainingIgnoreCase(name);
+    public List<Endpoint> searchByName(
+            String name,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return endpointRepository
+                .findByUserId(user.getId())
+                .stream()
+                .filter(endpoint ->
+                        endpoint.getName()
+                                .toLowerCase()
+                                .contains(name.toLowerCase()))
+                .toList();
     }
 
-    public List<Endpoint> searchByUrl(String url) {
-        return endpointRepository.findByUrlContainingIgnoreCase(url);
+    public List<Endpoint> searchByUrl(
+            String url,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return endpointRepository
+                .findByUserId(user.getId())
+                .stream()
+                .filter(endpoint ->
+                        endpoint.getUrl()
+                                .toLowerCase()
+                                .contains(url.toLowerCase()))
+                .toList();
+    }
+
+    private User getAuthenticatedUser(
+            Authentication authentication) {
+
+        String username = authentication.getName();
+
+        return userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new RuntimeException("Authenticated user not found")
+                );
     }
 }

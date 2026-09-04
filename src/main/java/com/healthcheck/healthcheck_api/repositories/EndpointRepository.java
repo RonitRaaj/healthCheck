@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface EndpointRepository extends JpaRepository<Endpoint, Long> {
 
@@ -15,4 +16,8 @@ public interface EndpointRepository extends JpaRepository<Endpoint, Long> {
     List<Endpoint> findByActiveTrueAndNextCheckAtLessThanEqual(
             LocalDateTime currentTime
     );
+
+    List<Endpoint> findByUserId(Long userId);
+
+    Optional<Endpoint> findByIdAndUserId(Long endpointId, Long userId);
 }

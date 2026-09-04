@@ -2,9 +2,13 @@ package com.healthcheck.healthcheck_api.services;
 
 import com.healthcheck.healthcheck_api.dto.EndpointStatsResponse;
 import com.healthcheck.healthcheck_api.dto.EndpointStatusHistoryResponse;
+import com.healthcheck.healthcheck_api.exceptions.EndpointNotFoundException;
 import com.healthcheck.healthcheck_api.models.EndpointStatusHistory;
+import com.healthcheck.healthcheck_api.models.User;
 import com.healthcheck.healthcheck_api.repositories.EndpointRepository;
 import com.healthcheck.healthcheck_api.repositories.EndpointStatusHistoryRepository;
+import com.healthcheck.healthcheck_api.repositories.UserRepository;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,19 +18,29 @@ public class EndpointStatusHistoryService {
 
     private final EndpointStatusHistoryRepository historyRepository;
     private final EndpointRepository endpointRepository;
+    private final UserRepository userRepository;
 
     public EndpointStatusHistoryService(
             EndpointStatusHistoryRepository historyRepository,
-            EndpointRepository endpointRepository) {
+            EndpointRepository endpointRepository,
+            UserRepository userRepository) {
 
         this.historyRepository = historyRepository;
         this.endpointRepository = endpointRepository;
+        this.userRepository = userRepository;
     }
 
-    public List<EndpointStatusHistoryResponse> getHistory(Long endpointId) {
+    public List<EndpointStatusHistoryResponse> getHistory(
+            Long endpointId,
+            Authentication authentication) {
 
-        if (!endpointRepository.existsById(endpointId)) {
-            throw new RuntimeException("Endpoint not found");
+        User user = getAuthenticatedUser(authentication);
+
+        if (!endpointRepository
+                .findByIdAndUserId(endpointId, user.getId())
+                .isPresent()) {
+
+            throw new EndpointNotFoundException(endpointId);
         }
 
         return historyRepository
@@ -42,19 +56,36 @@ public class EndpointStatusHistoryService {
                     response.setStatus(history.getStatus());
                     response.setStatusCode(history.getStatusCode());
                     response.setError(history.getError());
-                    response.setResponseTimeMs(history.getResponseTimeMs());
+                    response.setResponseTimeMs(
+                            history.getResponseTimeMs()
+                    );
 
                     return response;
                 })
                 .toList();
     }
 
-    public EndpointStatsResponse getEndpointStats(Long endpointId) {
+    public EndpointStatsResponse getEndpointStats(
+            Long endpointId,
+            Authentication authentication) {
 
-        long checks = historyRepository.countByEndpointId(endpointId);
+        User user = getAuthenticatedUser(authentication);
+
+        if (!endpointRepository
+                .findByIdAndUserId(endpointId, user.getId())
+                .isPresent()) {
+
+            throw new EndpointNotFoundException(endpointId);
+        }
+
+        long checks =
+                historyRepository.countByEndpointId(endpointId);
 
         long failures =
-                historyRepository.countByEndpointIdAndStatus(endpointId, "DOWN");
+                historyRepository.countByEndpointIdAndStatus(
+                        endpointId,
+                        "DOWN"
+                );
 
         long successfulChecks = checks - failures;
 
@@ -69,19 +100,39 @@ public class EndpointStatusHistoryService {
         Double avgResponseTime =
                 historyRepository.findAverageResponseTime(endpointId);
 
-        EndpointStatsResponse response = new EndpointStatsResponse();
+        EndpointStatsResponse response =
+                new EndpointStatsResponse();
 
         response.setEndpointId(endpointId);
-        response.setUptime(Math.round(uptime * 10.0) / 10.0);
-        response.setDowntime(Math.round(downtime * 10.0) / 10.0);
+        response.setUptime(
+                Math.round(uptime * 10.0) / 10.0
+        );
+        response.setDowntime(
+                Math.round(downtime * 10.0) / 10.0
+        );
         response.setChecks(checks);
+
         response.setAvgResponseTime(
                 avgResponseTime != null
                         ? Math.round(avgResponseTime * 10.0) / 10.0
                         : 0.0
         );
+
         response.setFailures(failures);
 
         return response;
+    }
+
+    private User getAuthenticatedUser(
+            Authentication authentication) {
+
+        String username = authentication.getName();
+
+        return userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Authenticated user not found"
+                        )
+                );
     }
 }
