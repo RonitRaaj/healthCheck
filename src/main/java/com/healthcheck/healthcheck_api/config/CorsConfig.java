@@ -11,7 +11,10 @@ public class CorsConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
 
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173", "https://status-beacon.vercel.app/")
+                .allowedOrigins(
+                        "http://localhost:5173",
+                        "https://status-beacon.vercel.app"
+                )
                 .allowedMethods(
                         "GET",
                         "POST",
@@ -19,6 +22,7 @@ public class CorsConfig implements WebMvcConfigurer {
                         "DELETE",
                         "OPTIONS"
                 )
-                .allowedHeaders("*");
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }

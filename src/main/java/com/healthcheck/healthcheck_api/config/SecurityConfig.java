@@ -3,6 +3,7 @@ package com.healthcheck.healthcheck_api.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -29,10 +30,10 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
 
+                .cors(Customizer.withDefaults())
+
                 .securityContext(securityContext -> securityContext
-                        .securityContextRepository(
-                                securityContextRepository
-                        )
+                        .securityContextRepository(securityContextRepository)
                 )
 
                 .sessionManagement(session -> session
@@ -50,9 +51,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                .logout(logout -> logout
-                        .permitAll()
-                );
+                .logout(logout -> logout.permitAll());
 
         return http.build();
     }
